@@ -45,7 +45,7 @@ function New-DotnetSolution {
         [string]$SourceDirectory = "src",
         [string]$SolutionName
     )
-        
+
     process {
 
         $DotNetProjects.GetEnumerator() | Foreach-Object {
@@ -56,7 +56,7 @@ function New-DotnetSolution {
         if ($SolutionName) {
             Write-Host -ForegroundColor Yellow "Using solution name $SolutionName"
         } else {
-            $SolutionName = (Split-Path -Path Get-Location -Leaf)
+            $SolutionName = (Split-Path -Path (Get-Location) -Leaf)
             Write-Host -ForegroundColor Yellow "Setting solution name to $SolutionName"
         }
 
@@ -69,7 +69,7 @@ function New-DotnetSolution {
             dotnet sln "$SourceDirectory\$SolutionName.sln" add "$SourceDirectory\$DirectoryName\$DirectoryName.csproj"
         }
     }
-        
+
 }
 
 function Get-DotNetProjects {
@@ -91,7 +91,7 @@ function Get-DotNetProjects {
             Write-Host -ForegroundColor Cyan "----------------------------------------------------------------"
             ($templates | Format-Table -HideTableHeaders -Property Index, Name | Out-String).Trim("`r`n") | Write-Host -ForegroundColor Cyan
             Write-Host -ForegroundColor Cyan "----------------------------------------------------------------"
-            
+
             if ($projects.Count -gt 0) {
                 Write-Host -ForegroundColor Green "`r`nSelected Projects"
                 $projects.GetEnumerator() | ForEach-Object { Write-Host -ForegroundColor Green " - " $_.Name }
@@ -99,13 +99,13 @@ function Get-DotNetProjects {
 
             #capture user input
             $r = $host.ui.Prompt($title, $message, $key)
-    
+
             $hasValue = $r[$key].Length -gt 0
 
             if ($hasValue -eq $false) {
                 return $projects
             }
-        
+
             $result = ($r[$key]).Trim()
 
             $dotnetItem = $templates | Where-Object Index -eq $result
@@ -127,5 +127,3 @@ function Get-DotNetProjects {
 
     }
 }
- 
-Export-ModuleMember Get-DotNetProjects,New-DotnetSolution
