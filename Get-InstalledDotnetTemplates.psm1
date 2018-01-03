@@ -38,4 +38,94 @@ function Get-InstalledDotnetTemplates {
     }
 }
 
-Export-ModuleMember Get-InstalledDotnetTemplates
+function New-DotnetSolution {
+    [CmdletBinding()]
+    param (
+        [parameter(ValueFromPipeline)][HashTable]$DotNetProjects,
+        [string]$SourceDirectory = "src",
+        [string]$SolutionName
+    )
+        
+    process {
+
+        $DotNetProjects.GetEnumerator() | Foreach-Object {
+            $DirectoryName = $_.Key
+            dotnet new  $_.Value.ShortName -o "$SourceDirectory\$DirectoryName"
+        }
+
+        if ($SolutionName) {
+            Write-Host -ForegroundColor Yellow "Using solution name $SolutionName"
+        } else {
+            $SolutionName = (Split-Path -Path Get-Location -Leaf)
+            Write-Host -ForegroundColor Yellow "Setting solution name to $SolutionName"
+        }
+
+        if ((Test-Path -Path "$SourceDirectory\$SolutionName.sln") -eq $false) {
+            dotnet new sln --name $SolutionName --output $SourceDirectory
+        }
+
+        $DotNetProjects.GetEnumerator() | Foreach-Object {
+            $DirectoryName = $_.Key
+            dotnet sln "$SourceDirectory\$SolutionName.sln" add "$SourceDirectory\$DirectoryName\$DirectoryName.csproj"
+        }
+    }
+        
+}
+
+function Get-DotNetProjects {
+    [CmdletBinding()]
+    param ()
+
+    process {
+        $title = "Adding projects to your solution"
+        $message = "Select dotnet item to add to your solution"
+        $key = "(blank to quit/finish)"
+        $projects = @{}
+
+        $templates = Get-InstalledDotnetTemplates
+
+        do {
+
+            Write-Host -ForegroundColor Cyan "----------------------------------------------------------------"
+            Write-Host -ForegroundColor Cyan "  Installed dotnet templates"
+            Write-Host -ForegroundColor Cyan "----------------------------------------------------------------"
+            ($templates | Format-Table -HideTableHeaders -Property Index, Name | Out-String).Trim("`r`n") | Write-Host -ForegroundColor Cyan
+            Write-Host -ForegroundColor Cyan "----------------------------------------------------------------"
+            
+            if ($projects.Count -gt 0) {
+                Write-Host -ForegroundColor Green "`r`nSelected Projects"
+                $projects.GetEnumerator() | ForEach-Object { Write-Host -ForegroundColor Green " - " $_.Name }
+            }
+
+            #capture user input
+            $r = $host.ui.Prompt($title, $message, $key)
+    
+            $hasValue = $r[$key].Length -gt 0
+
+            if ($hasValue -eq $false) {
+                return $projects
+            }
+        
+            $result = ($r[$key]).Trim()
+
+            $dotnetItem = $templates | Where-Object Index -eq $result
+            if ($dotnetItem -eq $null) {
+                Write-Host "Please supply a value" -ForegroundColor Yellow
+            }
+            else {
+                $projectName = $host.ui.Prompt($null, $null, "Project Name")
+                $projectName = $projectName["Project Name"]
+                if ($projects[$projectName] -eq $null) {
+                    $projects.Add($projectName, $dotnetItem)
+                }
+                else {
+                    Write-Host -ForegroundColor Yellow "`r`nProject already $projectName exists`r`n"
+                }
+            }
+
+        } while ($true)
+
+    }
+}
+ 
+Export-ModuleMember Get-DotNetProjects,New-DotnetSolution
