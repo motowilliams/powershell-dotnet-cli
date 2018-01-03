@@ -55,7 +55,8 @@ function New-DotnetSolution {
 
         if ($SolutionName) {
             Write-Host -ForegroundColor Yellow "Using solution name $SolutionName"
-        } else {
+        }
+        else {
             $SolutionName = (Split-Path -Path (Get-Location) -Leaf)
             Write-Host -ForegroundColor Yellow "Setting solution name to $SolutionName"
         }
@@ -77,6 +78,9 @@ function Get-DotNetProjects {
     param ()
 
     process {
+
+
+
         $title = "Adding projects to your solution"
         $message = "Select dotnet item to add to your solution"
         $key = "(blank to quit/finish)"
@@ -115,12 +119,36 @@ function Get-DotNetProjects {
             else {
                 $projectName = $host.ui.Prompt($null, $null, "Project Name")
                 $projectName = $projectName["Project Name"]
-                if ($projects[$projectName] -eq $null) {
-                    $projects.Add($projectName, $dotnetItem)
-                }
-                else {
+                if ($projects[$projectName] -ne $null) {
                     Write-Host -ForegroundColor Yellow "`r`nProject already $projectName exists`r`n"
+                    continue
                 }
+
+                $projects.Add($projectName, $dotnetItem)
+
+                if (($dotnetItem.Name.ToLower() -contains "test") `
+                        -or ($dotnetItem.Name.ToLower() -contains "config") `
+                        -or ($dotnetItem.Name.ToLower() -contains "page") `
+                        -or ($dotnetItem.Name.ToLower() -contains "mvc") `
+                        -or ($dotnetItem.Name.ToLower() -contains "file")
+                ) {}
+                else {
+                    $message = "Do you want to add unit test project?"
+                    
+                    $no = New-Object System.Management.Automation.Host.ChoiceDescription "&No", "No test project"
+                    $xunit = New-Object System.Management.Automation.Host.ChoiceDescription "&xunit", "Add xUnit Test Project"
+                    $mstest = New-Object System.Management.Automation.Host.ChoiceDescription "&mstest", "Add MS Test Project"
+                    
+                    $options = [System.Management.Automation.Host.ChoiceDescription[]]($xunit, $mstest, $no)
+                    
+                    $result = $host.ui.PromptForChoice($null, $message, $options, 0) 
+                    
+                    switch ($result) {
+                        0 { $projects.Add("$projectName.Tests", ($templates | Where-Object ShortName -eq "xunit")) }
+                        1 { $projects.Add("$projectName.Tests", ($templates | Where-Object ShortName -eq "mstest")) }
+                    }
+                }
+
             }
 
         } while ($true)
