@@ -124,26 +124,24 @@ function Get-DotNetProjects {
                 $projects.Add($projectName, $dotnetItem)
 
                 if (($dotnetItem.Name.ToLower() -like "*test*"  ) `
-                -or ($dotnetItem.Name.ToLower() -like "*config*") `
-                -or ($dotnetItem.Name.ToLower() -like "*page*"  ) `
-                -or ($dotnetItem.Name.ToLower() -like "*mvc*"   ) `
-                -or ($dotnetItem.Name.ToLower() -like "*file*"  )
+                        -or ($dotnetItem.Name.ToLower() -like "*config*") `
+                        -or ($dotnetItem.Name.ToLower() -like "*page*"  ) `
+                        -or ($dotnetItem.Name.ToLower() -like "*mvc*"   ) `
+                        -or ($dotnetItem.Name.ToLower() -like "*file*"  )
                 ) {}
                 else {
                     $message = "Do you want to add unit test project?"
-                    
-                    $no = New-Object System.Management.Automation.Host.ChoiceDescription "&No", "No test project"
-                    $xunit = New-Object System.Management.Automation.Host.ChoiceDescription "&xunit", "Add xUnit Test Project"
-                    $mstest = New-Object System.Management.Automation.Host.ChoiceDescription "&mstest", "Add MS Test Project"
-                    
-                    $options = [System.Management.Automation.Host.ChoiceDescription[]]($xunit, $mstest, $no)
-                    
-                    $result = $host.ui.PromptForChoice($null, $message, $options, 0) 
-                    
-                    switch ($result) {
-                        0 { $projects.Add("$projectName.Tests", ($templates | Where-Object ShortName -eq "xunit")) }
-                        1 { $projects.Add("$projectName.Tests", ($templates | Where-Object ShortName -eq "mstest")) }
+                    $optionArray = @()
+                    $optionArray += New-Object System.Management.Automation.Host.ChoiceDescription "&No", "No test project"
+                    $templates | Where-Object { $_.Name -like "*test*" } | ForEach-Object { 
+                        $short = $_.ShortName
+                        $description = $_.Name
+                        $item = New-Object System.Management.Automation.Host.ChoiceDescription "&$short", "Add $description" 
+                        $optionArray += $item
                     }
+                    $result = $host.ui.PromptForChoice($null, $message, $optionArray, 0) 
+                    $selectedShortName = (($optionArray[$result]).Label -replace "&", "")
+                    ($templates | Where-Object ShortName -eq $selectedShortName) | ForEach-Object { $projects.Add("$projectName.Tests", $_ ) }
                 }
 
             }
