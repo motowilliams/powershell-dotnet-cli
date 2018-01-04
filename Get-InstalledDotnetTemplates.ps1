@@ -48,11 +48,26 @@ function New-DotnetSolution {
 
     process {
 
+        # Create projects
         $DotNetProjects.GetEnumerator() | Foreach-Object {
-            $DirectoryName = $_.Key
-            dotnet new  $_.Value.ShortName -o "$SourceDirectory\$DirectoryName"
+            $projectName = $_.Key
+            $outputDirectory = "$SourceDirectory\$projectName"
+            Write-Verbose -Message "Creating $projectName at $outputDirectory"
+            dotnet new  $_.Value.ShortName -o $outputDirectory
         }
 
+        # Use naming concention to add project references for test projects
+        $DotNetProjects.GetEnumerator() | Foreach-Object {
+            if ($_.Value.Tags -contains "test") {
+                $projectName = $_.Key
+                $testProject = "$SourceDirectory\$projectName"
+                $targetProject = "$SourceDirectory\$projectName\$projectName.csproj" -replace ".Tests", ""
+                Write-Verbose -Message "Adding reference to $testProject from $targetProject"
+                dotnet add $testProject reference $targetProject
+            }
+        }
+
+        # Use incoming solution name of determine based on current directory name
         if ($SolutionName) {
             Write-Host -ForegroundColor Yellow "Using solution name $SolutionName"
         }
@@ -60,17 +75,19 @@ function New-DotnetSolution {
             $SolutionName = (Split-Path -Path (Get-Location) -Leaf)
             Write-Host -ForegroundColor Yellow "Setting solution name to $SolutionName"
         }
-
+        
+        # Create solution file
         if ((Test-Path -Path "$SourceDirectory\$SolutionName.sln") -eq $false) {
             dotnet new sln --name $SolutionName --output $SourceDirectory
         }
-
+        
+        # Add projects to solution file
         $DotNetProjects.GetEnumerator() | Foreach-Object {
-            $DirectoryName = $_.Key
-            dotnet sln "$SourceDirectory\$SolutionName.sln" add "$SourceDirectory\$DirectoryName\$DirectoryName.csproj"
+            $projectName = $_.Key
+            dotnet sln "$SourceDirectory\$SolutionName.sln" add "$SourceDirectory\$projectName\$projectName.csproj"
         }
-    }
 
+    }
 }
 
 function Get-DotNetProjects {
