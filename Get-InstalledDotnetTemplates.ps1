@@ -183,15 +183,34 @@ function Get-DotNetProjects {
                     $message = "Do you want to add unit test project?"
                     $optionArray = @()
                     $optionArray += New-Object System.Management.Automation.Host.ChoiceDescription "&No", "No test project"
-                    $templates | Get-TestProjectTemplates | ForEach-Object { 
-                        $short = $_.ShortName
-                        $description = $_.Name
-                        $item = New-Object System.Management.Automation.Host.ChoiceDescription "&$short", "Add $description" 
-                        $optionArray += $item
+
+                    $existingTestProject = $projects.GetEnumerator() | Where-Object {
+                        if ($_.Value.Tags -contains "test") {
+                            return $_
+                        }
                     }
-                    $result = $host.ui.PromptForChoice($null, $message, $optionArray, 0) 
-                    $selectedShortName = (($optionArray[$result]).Label -replace "&", "")
-                    ($templates | Where-Object ShortName -eq $selectedShortName) | ForEach-Object { $projects.Add("$projectName.Tests", $_ ) }
+
+                    # Check for existing test projects added to the collection
+                    if($existingTestProject -eq $null){
+                        $templates | Get-TestProjectTemplates | ForEach-Object { 
+                            $short = $_.ShortName
+                            $description = $_.Name
+                            $item = New-Object System.Management.Automation.Host.ChoiceDescription "&$short", "Add $description" 
+                            $optionArray += $item
+                        }
+                        $result = $host.ui.PromptForChoice($null, $message, $optionArray, 0) 
+                        $selectedShortName = (($optionArray[$result]).Label -replace "&", "")
+                        ($templates | Where-Object ShortName -eq $selectedShortName) | ForEach-Object { $projects.Add("$projectName.Tests", $_ ) }
+                    }
+                    else {
+                        $testProjectName = $existingTestProject.Value.Name
+                        $optionArray += New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", "Add $testProjectName"
+                        $result = $host.ui.PromptForChoice($null, $message, $optionArray, 0)
+                        if(($optionArray[$result]).Label -eq "&Yes"){
+                            $projects.Add("$projectName.Tests", $existingTestProject.Value ) 
+                        }
+                    }
+
                 }
 
             }
