@@ -139,8 +139,11 @@ function Get-DotNetProjects {
             Write-Host -ForegroundColor Cyan ("-" * 64)
 
             if ($projects.Count -gt 0) {
-                Write-Host -ForegroundColor Green "`r`n"$projects.Count "Selected Project(s)"
-                $projects.GetEnumerator() | ForEach-Object { Write-Host -ForegroundColor Green " -" $_.Name "`r`n  "  $_.Value.Name }
+                Write-Host -ForegroundColor Green ("-" * 64)
+                Write-Host -ForegroundColor Green $projects.Count "Selected Project(s)"
+                Write-Host -ForegroundColor Green ("-" * 64)
+                    $projects.GetEnumerator() | ForEach-Object { Write-Host -ForegroundColor Green " -" $_.Name "`r`n  "  $_.Value.Name }
+                Write-Host -ForegroundColor Green ("-" * 64)
             }
 
             #capture user input
