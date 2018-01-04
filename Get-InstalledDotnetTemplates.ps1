@@ -6,8 +6,10 @@ function Get-InstalledDotnetTemplates {
     param ()
 
     process {
-        if (($env:Path.Split(";") | Select-String dotnet)) {
 
+        $installedTemplates = @()
+
+        if (($env:Path.Split(";") | Select-String dotnet)) {
             # Filter out the blank lines
             $dotnetnewlist = (dotnet new -l) | Where-Object { $_ -notcontains "" }
 
@@ -15,8 +17,6 @@ function Get-InstalledDotnetTemplates {
             $templates = $dotnetnewlist | `
                 Select-Object -Skip (($dotnetnewlist | `
                         Select-String "^Templates" -CaseSensitive).LineNumber + 1)
-
-            $installedTemplates = @()
 
             For ($i = 0; $i -lt $templates.Length; $i++) {
                 $templateName = $templates[$i].SubString(0, 50).Trim()
@@ -35,10 +35,9 @@ function Get-InstalledDotnetTemplates {
 
                 $installedTemplates += $object
             }
-
-            return $installedTemplates
-
         }
+
+        return $installedTemplates
     }
 }
 
@@ -51,7 +50,6 @@ function New-DotnetSolution {
     )
 
     process {
-
         # Use incoming solution name of determine based on current directory name
         if ($SolutionName) {
             Write-Host -ForegroundColor Yellow "Using solution name $SolutionName"
@@ -97,8 +95,10 @@ function New-DotnetSolution {
             dotnet sln $SolutionPath add $projectPath
         }
         
+        # Not that everything has been established call the build command
         dotnet build "$SourceDirectory\$SolutionName.sln"
         
+        # and the test comamnd for our test project(s)
         $DotNetProjects.GetEnumerator() | Foreach-Object {
             $tags = $_.Value.Tags
             if ($tags -contains "test") {
@@ -107,7 +107,17 @@ function New-DotnetSolution {
                 dotnet test $testProject --no-build 
             }
         }
+    }
+}
 
+function Get-TestProjectTemplates {
+    [CmdletBinding()]
+    param (
+        [parameter(ValueFromPipeline)][Array]$DotNetProjects
+    )
+
+    process {
+        return $DotNetProjects | Where-Object { $_.Tags -contains "test" }
     }
 }
 
@@ -116,7 +126,6 @@ function Get-DotNetProjects {
     param ()
 
     process {
-
         $projects = @{}
 
         $templates = Get-InstalledDotnetTemplates
@@ -171,7 +180,7 @@ function Get-DotNetProjects {
                     $message = "Do you want to add unit test project?"
                     $optionArray = @()
                     $optionArray += New-Object System.Management.Automation.Host.ChoiceDescription "&No", "No test project"
-                    $templates | Where-Object { $_.Name -like "*test*" } | ForEach-Object { 
+                    $templates | Get-TestProjectTemplates | ForEach-Object { 
                         $short = $_.ShortName
                         $description = $_.Name
                         $item = New-Object System.Management.Automation.Host.ChoiceDescription "&$short", "Add $description" 
@@ -185,7 +194,6 @@ function Get-DotNetProjects {
             }
 
         } while ($true)
-
     }
 }
 
