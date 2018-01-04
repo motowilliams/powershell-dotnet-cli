@@ -167,3 +167,5 @@ function Get-DotNetProjects {
 
     }
 }
+
+Get-DotNetProjects | New-DotnetSolution
