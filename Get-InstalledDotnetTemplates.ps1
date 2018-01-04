@@ -79,30 +79,26 @@ function Get-DotNetProjects {
 
     process {
 
-
-
-        $title = "Adding projects to your solution"
-        $message = "Select dotnet item to add to your solution"
-        $key = "(blank to quit/finish)"
         $projects = @{}
 
         $templates = Get-InstalledDotnetTemplates
 
         do {
 
-            Write-Host -ForegroundColor Cyan "----------------------------------------------------------------"
+            Write-Host -ForegroundColor Cyan ("-" * 64)
             Write-Host -ForegroundColor Cyan "  Installed dotnet templates"
-            Write-Host -ForegroundColor Cyan "----------------------------------------------------------------"
+            Write-Host -ForegroundColor Cyan ("-" * 64)
             ($templates | Format-Table -HideTableHeaders -Property Index, Name | Out-String).Trim("`r`n") | Write-Host -ForegroundColor Cyan
-            Write-Host -ForegroundColor Cyan "----------------------------------------------------------------"
+            Write-Host -ForegroundColor Cyan ("-" * 64)
 
             if ($projects.Count -gt 0) {
-                Write-Host -ForegroundColor Green "`r`nSelected Projects"
-                $projects.GetEnumerator() | ForEach-Object { Write-Host -ForegroundColor Green " - " $_.Name }
+                Write-Host -ForegroundColor Green "`r`n"$projects.Count "Selected Project(s)"
+                $projects.GetEnumerator() | ForEach-Object { Write-Host -ForegroundColor Green " -" $_.Name "`r`n  "  $_.Value.Name }
             }
 
             #capture user input
-            $r = $host.ui.Prompt($title, $message, $key)
+            $key = "(blank to quit/finish)"
+            $r = $host.ui.Prompt("Adding projects to your solution", "Select dotnet item to add to your solution", $key)
 
             $hasValue = $r[$key].Length -gt 0
 
@@ -117,8 +113,9 @@ function Get-DotNetProjects {
                 Write-Host "Please supply a value" -ForegroundColor Yellow
             }
             else {
-                $projectName = $host.ui.Prompt($null, $null, "Project Name")
-                $projectName = $projectName["Project Name"]
+                $key = $dotnetItem.Name + " Name"
+                $projectName = $host.ui.Prompt($null, $null, $key)
+                $projectName = $projectName[$key]
                 if ($projects[$projectName] -ne $null) {
                     Write-Host -ForegroundColor Yellow "`r`nProject already $projectName exists`r`n"
                     continue
@@ -126,11 +123,11 @@ function Get-DotNetProjects {
 
                 $projects.Add($projectName, $dotnetItem)
 
-                if (($dotnetItem.Name.ToLower() -contains "test") `
-                        -or ($dotnetItem.Name.ToLower() -contains "config") `
-                        -or ($dotnetItem.Name.ToLower() -contains "page") `
-                        -or ($dotnetItem.Name.ToLower() -contains "mvc") `
-                        -or ($dotnetItem.Name.ToLower() -contains "file")
+                if (($dotnetItem.Name.ToLower() -like "*test*"  ) `
+                -or ($dotnetItem.Name.ToLower() -like "*config*") `
+                -or ($dotnetItem.Name.ToLower() -like "*page*"  ) `
+                -or ($dotnetItem.Name.ToLower() -like "*mvc*"   ) `
+                -or ($dotnetItem.Name.ToLower() -like "*file*"  )
                 ) {}
                 else {
                     $message = "Do you want to add unit test project?"
