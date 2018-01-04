@@ -1,3 +1,6 @@
+[CmdletBinding()]
+param ()
+
 function Get-InstalledDotnetTemplates {
     [CmdletBinding()]
     param ()
@@ -21,13 +24,14 @@ function Get-InstalledDotnetTemplates {
                 $templateLanguage = $templates[$i].SubString(67, 18).Trim()
                 $templateTags = $templates[$i].SubString(85).Trim()
 
+                Write-Verbose "Creating $templateName ($templateShortName) using $templateLanguage with tags $templateTags"
+
                 $object = New-Object -TypeName PSObject
                 $object | Add-Member -MemberType NoteProperty -Name Index -Value ($i + 1)
                 $object | Add-Member -MemberType NoteProperty -Name Name -Value $templateName
                 $object | Add-Member -MemberType NoteProperty -Name ShortName -Value $templateShortName
                 $object | Add-Member -MemberType NoteProperty -Name Language -Value $templateLanguage.Split(",")
                 $object | Add-Member -MemberType NoteProperty -Name Tags -Value $templateTags.Split("/")
-                Write-Verbose $object
 
                 $installedTemplates += $object
             }
@@ -48,25 +52,6 @@ function New-DotnetSolution {
 
     process {
 
-        # Create projects
-        $DotNetProjects.GetEnumerator() | Foreach-Object {
-            $projectName = $_.Key
-            $outputDirectory = "$SourceDirectory\$projectName"
-            Write-Verbose -Message "Creating $projectName at $outputDirectory"
-            dotnet new  $_.Value.ShortName -o $outputDirectory
-        }
-
-        # Use naming concention to add project references for test projects
-        $DotNetProjects.GetEnumerator() | Foreach-Object {
-            if ($_.Value.Tags -contains "test") {
-                $projectName = $_.Key
-                $testProject = "$SourceDirectory\$projectName"
-                $targetProject = "$SourceDirectory\$projectName\$projectName.csproj" -replace ".Tests", ""
-                Write-Verbose -Message "Adding reference to $testProject from $targetProject"
-                dotnet add $testProject reference $targetProject
-            }
-        }
-
         # Use incoming solution name of determine based on current directory name
         if ($SolutionName) {
             Write-Host -ForegroundColor Yellow "Using solution name $SolutionName"
@@ -78,13 +63,49 @@ function New-DotnetSolution {
         
         # Create solution file
         if ((Test-Path -Path "$SourceDirectory\$SolutionName.sln") -eq $false) {
+            Write-Verbose -Message "Creating solution file $SolutionName at from $SourceDirectory"
             dotnet new sln --name $SolutionName --output $SourceDirectory
         }
         
+        # Create projects
+        $DotNetProjects.GetEnumerator() | Foreach-Object {
+            $projectName = $_.Key
+            $projectShortName = $_.Value.ShortName
+            $outputDirectory = "$SourceDirectory\$projectName"
+            Write-Verbose -Message "Creating $projectName ($projectShortName) at $outputDirectory"
+            dotnet new $projectShortName -o $outputDirectory
+        }
+
+        # Use naming concention to add project references for test projects
+        $DotNetProjects.GetEnumerator() | Foreach-Object {
+            $tags = $_.Value.Tags
+            if ($tags -contains "test") {
+                $projectName = $_.Key
+                $testProject = "$SourceDirectory\$projectName"
+                $targetProject = "$SourceDirectory\$projectName\$projectName.csproj" -replace ".Tests", ""
+                Write-Verbose -Message "Adding reference to $testProject from $targetProject"
+                dotnet add $testProject reference $targetProject
+            }
+        }
+
         # Add projects to solution file
         $DotNetProjects.GetEnumerator() | Foreach-Object {
             $projectName = $_.Key
-            dotnet sln "$SourceDirectory\$SolutionName.sln" add "$SourceDirectory\$projectName\$projectName.csproj"
+            $SolutionPath = "$SourceDirectory\$SolutionName.sln"
+            $projectPath = "$SourceDirectory\$projectName\$projectName.csproj"
+            Write-Verbose -Message "Adding project $projectPath to solution file $SolutionPath"
+            dotnet sln $SolutionPath add $projectPath
+        }
+        
+        dotnet build "$SourceDirectory\$SolutionName.sln"
+        
+        $DotNetProjects.GetEnumerator() | Foreach-Object {
+            $tags = $_.Value.Tags
+            if ($tags -contains "test") {
+                $projectName = $_.Key
+                $testProject = "$SourceDirectory\$projectName"
+                dotnet test $testProject --no-build 
+            }
         }
 
     }
