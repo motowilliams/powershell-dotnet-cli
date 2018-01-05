@@ -1,6 +1,3 @@
-[CmdletBinding()]
-param ()
-
 function Get-InstalledDotnetTemplates {
     [CmdletBinding()]
     param ()
@@ -142,7 +139,7 @@ function Get-DotNetProjects {
                 Write-Host -ForegroundColor Green ("-" * 64)
                 Write-Host -ForegroundColor Green $projects.Count "Selected Project(s)"
                 Write-Host -ForegroundColor Green ("-" * 64)
-                    $projects.GetEnumerator() | ForEach-Object { Write-Host -ForegroundColor Green " -" $_.Name "`r`n  "  $_.Value.Name }
+                $projects.GetEnumerator() | ForEach-Object { Write-Host -ForegroundColor Green " -" $_.Name "`r`n  "  $_.Value.Name }
                 Write-Host -ForegroundColor Green ("-" * 64)
             }
 
@@ -185,13 +182,16 @@ function Get-DotNetProjects {
                     $optionArray += New-Object System.Management.Automation.Host.ChoiceDescription "&No", "No test project"
 
                     $existingTestProject = $projects.GetEnumerator() | Where-Object {
+                        Write-Verbose "Tags: $($_.Value.Tags) -contains 'test'"
                         if ($_.Value.Tags -contains "test") {
+                            Write-Verbose "$($_.Value.Name) in the selected projects"
                             return $_
                         }
-                    }
+                    } | Select-Object -First 1
 
                     # Check for existing test projects added to the collection
-                    if($existingTestProject -eq $null){
+                    if ($existingTestProject -eq $null) {
+                        Write-Verbose "No existing test projects selected"
                         $templates | Get-TestProjectTemplates | ForEach-Object { 
                             $short = $_.ShortName
                             $description = $_.Name
@@ -204,9 +204,10 @@ function Get-DotNetProjects {
                     }
                     else {
                         $testProjectName = $existingTestProject.Value.Name
+                        Write-Verbose "$($existingTestProject.Key) already selected for the solution"
                         $optionArray += New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", "Add $testProjectName"
                         $result = $host.ui.PromptForChoice($null, $message, $optionArray, 0)
-                        if(($optionArray[$result]).Label -eq "&Yes"){
+                        if (($optionArray[$result]).Label -eq "&Yes") {
                             $projects.Add("$projectName.Tests", $existingTestProject.Value ) 
                         }
                     }
@@ -218,5 +219,3 @@ function Get-DotNetProjects {
         } while ($true)
     }
 }
-
-Get-DotNetProjects | New-DotnetSolution
